@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Typing Game - Always Win</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root { --bg1:#74ebd5; --bg2:#ACB6E5; --accent:#ff4d4d; --card:#ffffff; }
+    body{
+      font-family: Arial, sans-serif;
+      text-align:center;
+      background: linear-gradient(to right, var(--bg1), var(--bg2));
+      color:#222;
+      margin:0;
+      padding:30px 10px 60px;
+    }
+    .container{ max-width:900px; margin:0 auto; }
+    h1{ font-size:32px; margin-bottom:10px; }
+    #game {
+      background: rgba(255,255,255,0.85);
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.12);
+      margin-bottom:20px;
+      border:2px solid rgba(0,0,0,0.06);
+    }
+    #word { font-size:30px; font-weight:700; color:var(--accent); margin:12px 0; }
+    #inputBox {
+      font-size:20px; padding:10px 12px; width:80%; max-width:420px;
+      border-radius:8px; border:2px solid #333; outline:none;
+    }
+    #score, #timer, #compliment { font-size:18px; margin-top:12px; }
+    #compliment { color:green; font-weight:600; min-height:1.2em; }
+    details#history { margin-top:18px; text-align:left; max-width:820px; margin-left:auto; margin-right:auto; }
+    summary{ cursor:pointer; font-weight:700; font-size:16px; padding:8px; }
+    .history-card{
+      background:var(--card); padding:12px; border-radius:8px; border:1px solid #ddd;
+      max-height:320px; overflow:auto; font-size:14px; line-height:1.4;
+    }
+    a.link { color: #0b61ff; text-decoration: none; }
+    @media (max-width:480px){
+      #word{ font-size:22px; }
+      #inputBox{ width:94%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Typing Game — Always Win (Endless)</h1>
+
+    <div id="game">
+      <div id="word" aria-live="polite">...</div>
+      <input id="inputBox" autocomplete="off" placeholder="Type the word and press Enter" />
+      <div id="score">Score: 0</div>
+      <div id="timer">Time Left: 30s</div>
+      <div id="compliment" aria-live="polite"></div>
+    </div>
+
+    <details id="history">
+      <summary>HISTORY / How I made this (click to expand)</summary>
+      <div class="history-card">
+        <p><strong>Nusrat:</strong> Hello.. I need your help.. btw how are you doing??</p>
+        <p><strong>ChatGPT:</strong> Hello, Nusrat! I’m doing great, thanks for asking... (help to create typing game)</p>
+        <p><strong>Nusrat:</strong> I have a simple request... professor said user always win...</p>
+        <p><strong>ChatGPT:</strong> Created an HTML/JS typing game with colorful GUI, timer, dynamic compliments...</p>
+        <p><strong>Nusrat:</strong> Please do endless words.</p>
+        <p><strong>ChatGPT:</strong> Made endless mode (timer resets) and added history section...</p>
+        <p><strong>Nusrat:</strong> Here is our chat link:</p>
+        <p><a class="link" href="https://chatgpt.com/share/68cacae6-2ea0-8003-a308-e1845328426f" target="_blank" rel="noopener noreferrer">Full ChatGPT conversation (shared link)</a></p>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const words = [
+        "computer","keyboard","internet","algorithm","python","database",
+        "network","software","hardware","function","variable","security",
+        "cloud","debug","syntax","compile","server","login","password","cache",
+        "encryption","protocol","interface","package","module","framework"
+      ];
+
+      const compliments = [
+        "Good work!","Wow!","Fantastic!","Amazing!","Keep it up!","Superb!","Excellent!"
+      ];
+
+      const wordDiv = document.getElementById('word');
+      const inputBox = document.getElementById('inputBox');
+      const scoreDiv = document.getElementById('score');
+      const timerDiv = document.getElementById('timer');
+      const complimentDiv = document.getElementById('compliment');
+
+      let score = 0;
+      let timeLeft = 30;
+      let currentWord = '';
+
+      function updateTimerDisplay() {
+        timerDiv.textContent = `Time Left: ${timeLeft}s`;
+      }
+
+      function pickNewWord() {
+        currentWord = words[Math.floor(Math.random() * words.length)];
+        wordDiv.textContent = currentWord;
+        inputBox.value = '';
+      }
+
+      function onEnterCheck(e) {
+        if (e.key !== 'Enter') return;
+        const typed = inputBox.value.trim();
+        if (typed.toLowerCase() === currentWord.toLowerCase()) {
+          score += 1;
+          scoreDiv.textContent = `Score: ${score}`;
+          complimentDiv.textContent = compliments[Math.floor(Math.random() * compliments.length)];
+          timeLeft = 30; // reset timer
+          updateTimerDisplay();
+          pickNewWord();
+        } else {
+          inputBox.value = '';
+          complimentDiv.textContent = "Try again — you got this!";
+        }
+      }
+
+      function tick() {
+        if (timeLeft > 0) {
+          timeLeft--;
+          updateTimerDisplay();
+        } else {
+          timeLeft = 30;
+          pickNewWord();
+          updateTimerDisplay();
+          complimentDiv.textContent = "Time reset! Keep typing! 🎉";
+        }
+      }
+
+      inputBox.addEventListener('keydown', onEnterCheck);
+      pickNewWord();
+      updateTimerDisplay();
+      inputBox.focus();
+      setInterval(tick, 1000);
+    });
+  </script>
+</body>
+</html>
