@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Typing Game — newgame.html</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg1:#74ebd5;
+      --bg2:#ACB6E5;
+      --card:#ffffffee;
+      --accent:#ff4d4d;
+      --muted:#555;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:linear-gradient(120deg,var(--bg1),var(--bg2));
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      color:#222;
+    }
+    .wrap{
+      width:100%;
+      max-width:920px;
+    }
+    header{
+      text-align:center;
+      margin-bottom:14px;
+    }
+    h1{
+      margin:0;
+      font-size:26px;
+      letter-spacing:0.2px;
+    }
+    .card{
+      background:var(--card);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(2,6,23,0.12);
+    }
+    #sentence{
+      font-size:28px;
+      font-weight:700;
+      color:var(--accent);
+      margin:16px 0;
+      min-height:48px;
+    }
+    #inputBox{
+      width:100%;
+      padding:12px 14px;
+      font-size:18px;
+      border-radius:10px;
+      border:2px solid #333;
+      outline:none;
+      max-width:100%;
+    }
+    .meta{
+      display:flex;
+      gap:12px;
+      margin-top:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .meta div{
+      font-size:16px;
+      color:var(--muted);
+    }
+    #score{font-weight:700; color:#0b61ff}
+    #timer{font-weight:700; color:#0a9f5e}
+    #compliment{
+      min-height:1.2em;
+      font-weight:700;
+      color:#1a8b4f;
+      margin-top:10px;
+    }
+    .controls{
+      margin-top:12px;
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    button.small{
+      background:#0b61ff;
+      color:#fff;
+      border:0;
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .hint{font-size:13px;color:#666;margin-top:8px}
+    footer{margin-top:10px;text-align:center;color:#444;font-size:13px}
+    @media (max-width:480px){
+      #sentence{font-size:20px}
+      h1{font-size:20px}
+      #inputBox{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Typing Game — Sentence Mode (Endless)</h1>
+      <div class="hint">Type the sentence <strong>exactly</strong> (case-insensitive) and press Enter. Wrong? you'll see <em>"Type Again"</em>.</div>
+    </header>
+
+    <div class="card" id="game">
+      <div id="sentence" aria-live="polite">Preparing...</div>
+      <input id="inputBox" autocomplete="off" placeholder="Type the sentence and press Enter" />
+      <div class="meta" aria-hidden="false">
+        <div id="score">Score: 0</div>
+        <div id="timer">Time Left: 35s</div>
+      </div>
+      <div id="compliment" aria-live="polite"></div>
+
+      <div class="controls">
+        <button class="small" id="toggleSound">Sound: ON</button>
+        <button class="small" id="skipBtn">Skip Sentence</button>
+        <button class="small" id="resetBtn">Reset Score</button>
+      </div>
+    </div>
+
+    <footer>
+      Created for class submission — endless, random, technical sentences (max 30 chars).
+    </footer>
+  </div>
+
+  <script>
+    (function(){
+      const MAX_CHARS = 30;
+      const TIMER_SEC = 35;
+      const RECENT_CACHE = 600;
+
+      const sentenceDiv = document.getElementById('sentence');
+      const inputBox = document.getElementById('inputBox');
+      const scoreDiv = document.getElementById('score');
+      const timerDiv = document.getElementById('timer');
+      const complimentDiv = document.getElementById('compliment');
+      const toggleSoundBtn = document.getElementById('toggleSound');
+      const skipBtn = document.getElementById('skipBtn');
+      const resetBtn = document.getElementById('resetBtn');
+
+      let score = 0;
+      let timeLeft = TIMER_SEC;
+      let currentSentence = '';
+      let recent = [];
+      let soundOn = true;
+
+      // EXACT compliments + emojis you asked for
+      const motivations = [
+        "HWAITING 🌸🌺💐🎉",
+        "GOOD ONE 🌸🥳💐🎉",
+        "KEEP IT UP 🌸🌺🎉💐",
+        "CONGRATULATIONS 🌸🌺💐🎉🥳",
+        "YOU SLAYED 🌸💐🎉🌺",
+        "FANTASTIC 🌸🌺💐🎉🥳",
+        "FABULOUS 🌸🌺💐🎉"
+      ];
+
+      const verbs = ["Fix","Debug","Compile","Encrypt","Deploy","Scale","Patch","Cache","Render","Index","Parse","Commit","Merge","Build","Test","Push","Pull","Audit","Optimize","Train","Ping","Trace","Probe","Query","Sync"];
+      const objects = ["API","CSS","HTML","Docker","Server","Latency","Cache","Module","Thread","Packet","Kernel","Script","Bucket","Token","Proxy","Buffer","Query","Socket","Stream","Model","Tensor","Node","Port","DB","Cache"];
+      const adjectives = ["fast","tiny","secure","clean","async","stable","robust","atomic","quantum","smart","neat","quick","silent","light","modular"];
+      const prefixes = ["Please","Now","Try","Quick","Check","Note","Reminder","Alert"];
+      const suffixes = ["pls","now","!","...","ok","✓","✅"];
+
+      function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = AudioContext ? new AudioContext() : null;
+
+      function playPuk(count=1){
+        if(!soundOn || !audioCtx) return;
+        if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+        const now = audioCtx.currentTime;
+        for(let i=0;i<count;i++){
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.type = 'square';
+          o.frequency.value = 720 + Math.random()*260;
+          g.gain.value = 0.0001;
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          g.gain.setValueAtTime(0.0001, now + i*0.06);
+          g.gain.linearRampToValueAtTime(0.05, now + i*0.06 + 0.003);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.06 + 0.07);
+          o.start(now + i*0.06);
+          o.stop(now + i*0.06 + 0.09);
+        }
+      }
+
+      function generateSentence(){
+        const attempts = 200;
+        for(let i=0;i<attempts;i++){
+          const t = Math.random();
+          let s = "";
+          if(t < 0.22){
+            s = `${rand(verbs)} ${rand(objects)}`;
+          } else if(t < 0.44){
+            s = `${rand(prefixes)} ${rand(verbs)} ${rand(objects)}`;
+          } else if(t < 0.60){
+            s = `${rand(verbs)} ${rand(adjectives)} ${rand(objects)}`;
+          } else if(t < 0.75){
+            s = `${rand(objects)} ${rand(verbs).toLowerCase()}!`;
+          } else if(t < 0.86){
+            s = `${rand(adjectives)} ${rand(objects)}`;
+          } else if(t < 0.94){
+            s = `${rand(verbs)} the ${rand(objects)}`;
+          } else {
+            s = `${rand(objects)} & ${rand(objects)}`;
+          }
+          if(Math.random() < 0.25) s += " " + rand(suffixes);
+          s = s.replace(/\s+/g,' ').trim();
+          if(s.length > MAX_CHARS || s.length < 4) continue;
+          if(recent.indexOf(s) !== -1) continue;
+          recent.push(s);
+          if(recent.length > RECENT_CACHE) recent.shift();
+          return s;
+        }
+        return `${rand(verbs)} ${rand(objects)}`.slice(0,MAX_CHARS).trim();
+      }
+
+      function updateTimer(){ timerDiv.textContent = `Time Left: ${timeLeft}s`; }
+
+      function pickNewSentence(){
+        currentSentence = generateSentence();
+        sentenceDiv.textContent = currentSentence;
+        inputBox.value = '';
+        inputBox.focus();
+        complimentDiv.textContent = '';
+      }
+
+      function checkInput(e){
+        if(e.key !== 'Enter') return;
+        const typed = inputBox.value.trim();
+        if(typed.length === 0) return;
+        if(typed.toLowerCase() === currentSentence.toLowerCase()){
+          score++;
+          scoreDiv.textContent = `Score: ${score}`;
+          complimentDiv.textContent = rand(motivations);
+          timeLeft = TIMER_SEC;
+          updateTimer();
+          pickNewSentence();
+          playPuk(2);
+        } else {
+          complimentDiv.textContent = "Type Again";
+          playPuk(1);
+          inputBox.select();
+        }
+      }
+
+      function tick(){
+        if(timeLeft > 0){
+          timeLeft--;
+          updateTimer();
+        } else {
+          timeLeft = TIMER_SEC;
+          updateTimer();
+          complimentDiv.textContent = "Time reset! Keep typing! 🎉";
+          pickNewSentence();
+        }
+      }
+
+      inputBox.addEventListener('keydown', function(e){
+        const ignore = ['Shift','Control','Alt','Meta','Tab','CapsLock','Enter'];
+        if(!ignore.includes(e.key)){ playPuk(1); }
+        checkInput(e);
+      });
+
+      toggleSoundBtn.addEventListener('click', function(){
+        soundOn = !soundOn;
+        toggleSoundBtn.textContent = `Sound: ${soundOn ? 'ON' : 'OFF'}`;
+        if(soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+      });
+
+      skipBtn.addEventListener('click', function(){
+        complimentDiv.textContent = "Skipped — new sentence!";
+        timeLeft = TIMER_SEC;
+        pickNewSentence();
+      });
+
+      resetBtn.addEventListener('click', function(){
+        score = 0;
+        scoreDiv.textContent = `Score: ${score}`;
+        complimentDiv.textContent = "Score reset 🌸🎉";
+      });
+
+      function init(){
+        score = 0;
+        timeLeft = TIMER_SEC;
+        updateTimer();
+        scoreDiv.textContent = `Score: ${score}`;
+        window.addEventListener('click', function warm(){
+          if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+          window.removeEventListener('click', warm);
+        });
+        pickNewSentence();
+        inputBox.focus();
+        setInterval(tick, 1000);
+      }
+      init();
+    })();
+  </script>
+</body>
+</html>
